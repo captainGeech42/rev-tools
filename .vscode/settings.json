@@ -1,0 +1,14 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/opt/idapro/python/3/",
+        "${env:HOME}/.idapro/pylib/",
+    ],
+    "python.analysis.extraPaths": [
+        "/opt/idapro/python/3/",
+        "${env:HOME}/.idapro/pylib/",
+    ],
+    "python.analysis.include": [
+        "/opt/idapro/python/3/",
+        "${env:HOME}/.idapro/pylib/",
+    ],
+}
