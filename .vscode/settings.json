@@ -2,13 +2,16 @@
     "python.autoComplete.extraPaths": [
         "/opt/idapro/python/3/",
         "${env:HOME}/.idapro/pylib/",
+        "${env:HOME}/venv/py3/lib/python3.13/site-packages",
     ],
     "python.analysis.extraPaths": [
         "/opt/idapro/python/3/",
         "${env:HOME}/.idapro/pylib/",
+        "${env:HOME}/venv/py3/lib/python3.13/site-packages",
     ],
     "python.analysis.include": [
         "/opt/idapro/python/3/",
         "${env:HOME}/.idapro/pylib/",
+        "${env:HOME}/venv/py3/lib/python3.13/site-packages",
     ],
 }
