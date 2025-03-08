@@ -15,16 +15,23 @@ DEBUG_MODE = False
 
 LOG = liblog.Log("log_sym_namer", DEBUG_MODE)
 
-LOG_SYMBOL = "z_idk_logging_1"
-# LOG_SYMBOL = "z_idk_logging_4"
+LOG_SYMBOL = "z_idk_logging_3"
 
 # process log calls where a plausible symbol name is prefixing the message instead of '%s'
-ENABLE_HARDCODE_CHECK = False
+ENABLE_HARDCODE_CHECK = True
+
+# reprocess symbols that were auto renamed
+RECHECK_AUT = False
 
 # some log calls look like this:
 #     z_idk_logging_1("SNAPSHOT: %s Error listing: %s\n", "SnapshotVMFilesGetFTLockFile", (const char *)v150);
 KNOWN_PREFIXES = [
-    "SNAPSHOT"
+    "SNAPSHOT",
+    "SNDCONVERT",
+    "VMIOPSVGA3D",
+    "SOUNDLIB",
+    "FILE",
+    "SSLCRLCACHE",
 ]
 
 # phase 1: get the function eas that call the log func
@@ -40,7 +47,7 @@ while call_site != idaapi.BADADDR:
     f = ida_funcs.get_func(call_site)
     if f:
         n = ida_name.get_name(f.start_ea)
-        if n.startswith("sub_") or n.startswith("aut_"):
+        if n.startswith("sub_") or (n.startswith("aut_") and RECHECK_AUT):
             func_eas.add(f.start_ea)
     else:
         # LOG.warning(f"no function info for call @ {call_site:#x}")
@@ -55,12 +62,10 @@ LOG.info(f"also skipping {len(failed_eas)} call sites that aren't in a function"
 
 num_set = 0
 
-# func_eas = [0x4a08b0]
-
-_NAME_PAT = re.compile("^[a-z%]+: ", re.I)
+_NAME_PAT = re.compile("^[a-z%][a-z0-9]*: ", re.I)
 for func_ea in func_eas:
     calls = du.find_all_calls_to_within(LOG_SYMBOL, func_ea)
-    LOG.debug(str(calls))
+    # LOG.debug(str(calls))
 
     candidate_name = ""
 
