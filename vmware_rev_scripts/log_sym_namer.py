@@ -1,3 +1,5 @@
+import re
+
 import FIDL.decompiler_utils as du
 
 import idaapi
@@ -5,11 +7,25 @@ import ida_funcs
 import ida_name
 import ida_xref
 
-import idalib.log
+from importlib import reload
+import idalib.log as liblog
+liblog = reload(liblog)
 
-LOG = idalib.log.Log("log_sym_namer")
+DEBUG_MODE = False
+
+LOG = liblog.Log("log_sym_namer", DEBUG_MODE)
 
 LOG_SYMBOL = "z_idk_logging_1"
+# LOG_SYMBOL = "z_idk_logging_4"
+
+# process log calls where a plausible symbol name is prefixing the message instead of '%s'
+ENABLE_HARDCODE_CHECK = False
+
+# some log calls look like this:
+#     z_idk_logging_1("SNAPSHOT: %s Error listing: %s\n", "SnapshotVMFilesGetFTLockFile", (const char *)v150);
+KNOWN_PREFIXES = [
+    "SNAPSHOT"
+]
 
 # phase 1: get the function eas that call the log func
 
@@ -24,7 +40,7 @@ while call_site != idaapi.BADADDR:
     f = ida_funcs.get_func(call_site)
     if f:
         n = ida_name.get_name(f.start_ea)
-        if n.startswith("sub_"):
+        if n.startswith("sub_") or n.startswith("aut_"):
             func_eas.add(f.start_ea)
     else:
         # LOG.warning(f"no function info for call @ {call_site:#x}")
@@ -39,21 +55,45 @@ LOG.info(f"also skipping {len(failed_eas)} call sites that aren't in a function"
 
 num_set = 0
 
+# func_eas = [0x4a08b0]
+
+_NAME_PAT = re.compile("^[a-z%]+: ", re.I)
 for func_ea in func_eas:
     calls = du.find_all_calls_to_within(LOG_SYMBOL, func_ea)
+    LOG.debug(str(calls))
 
     candidate_name = ""
 
     for c in calls:
-        if len(c.args) < 2:
+        if not c.args[0].type == "string":
             continue
 
-        if not (c.args[0].type == "string" and c.args[1].type == "string"):
-            continue
+        fstr: str = c.args[0].val
+        found_prefix = False
+        for p in KNOWN_PREFIXES:
+            if fstr.startswith(f"{p}: "):
+                fstr = fstr.split(": ", 1)[1]
+                found_prefix = True
+                break
 
-        fstr = c.args[0].val
-        if fstr.startswith("%s: "):
-            n = c.args[1].val
+        if _NAME_PAT.search(fstr) or found_prefix:
+            n = fstr.split(": ", 1)[0]
+
+            # see if the name is hardcoded into log msg
+            # compiler optimizations == evil and unnecessary
+            # sometimes it is and sometimes it isnt
+            if n.startswith("%s"):
+                # get the first va arg
+                if len(c.args) < 2 or c.args[1].type != "string":
+                    LOG.warning(f"{c.ea:#x} log call is malformed or dynamic")
+                n = c.args[1].val
+
+                if not isinstance(n, str):
+                    LOG.warning(f"{c.ea:#x} log call is dynamic")
+                    continue
+            else:
+                if not ENABLE_HARDCODE_CHECK:
+                    continue
 
             # if we got a name, see if it is the same as the one we had previously
             # if we didnt previously have one, save it
@@ -66,20 +106,24 @@ for func_ea in func_eas:
                 candidate_name = n
     
     if candidate_name:
-        candidate_name = "aut_" + candidate_name
+        try:
+            candidate_name = "aut_" + candidate_name
 
-        ctr = 0
-        n = candidate_name
-        while ida_name.get_name_ea(idaapi.BADADDR, n) != idaapi.BADADDR:
-            # we already have a func with this name
-            # add a counter
-            ctr += 1
-            n = f"{candidate_name}_{ctr}"
+            ctr = 0
+            n = candidate_name
+            while ida_name.get_name_ea(idaapi.BADADDR, n) != idaapi.BADADDR:
+                # we already have a func with this name
+                # add a counter
+                ctr += 1
+                n = f"{candidate_name}_{ctr}"
         
-        if ida_name.set_name(func_ea, n):
-            LOG.info(f"renamed {func_ea:#x} to {n}")
-            num_set +=1
-        else:
-            LOG.error(f"failed to rename {func_ea:#x} to {n}")
+            if ida_name.set_name(func_ea, n):
+                LOG.info(f"renamed {func_ea:#x} to {n}")
+                num_set +=1
+            else:
+                LOG.error(f"failed to rename {func_ea:#x} to {n}")
+        except:
+            LOG.exc(f"failed analyzing {func_ea:#x}")
+            break
 
 LOG.info(f"renamed {num_set} functions")
