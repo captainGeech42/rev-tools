@@ -28,8 +28,39 @@ function Backdoor_OnEnter(args: InvocationArguments) {
     mov     [rax+8], rbx
     pop     qword ptr [rax]
     */
+
     log(`Backdoor(${args[0].toString(16)})`);
-    log(hexdump(args[0].readPointer(), { length: 0x30, ansi: false }))
+
+    // let ptr = args[0].readPointer();
+    // if (ptr) {
+    //     log(hexdump(ptr, { length: 0x30, ansi: false }));
+    // } else {
+    //     log("(couldnt deref mem)");
+    // }
+}
+
+class Backdoor_proto_hb {
+    rax: UInt64;
+    rbx: UInt64;
+    rcx: UInt64;
+    rdx: UInt64;
+    rsi: UInt64;
+    rdi: UInt64;
+    rbp: UInt64;
+
+    constructor(ptr: NativePointer) {
+        this.rax = ptr.readU64(); ptr = ptr.add(8);
+        this.rbx = ptr.readU64(); ptr = ptr.add(8);
+        this.rcx = ptr.readU64(); ptr = ptr.add(8);
+        this.rdx = ptr.readU64(); ptr = ptr.add(8);
+        this.rsi = ptr.readU64(); ptr = ptr.add(8);
+        this.rdi = ptr.readU64(); ptr = ptr.add(8);
+        this.rbp = ptr.readU64(); ptr = ptr.add(8);
+    }
+
+    toString(): string {
+        return Object.entries(this).map(([k, v]) => `${k}=${v.toString(16)}`).join(" | ")
+    }
 }
 
 function BackdoorHbIn_OnEnter(args: InvocationArguments) {
@@ -54,7 +85,12 @@ function BackdoorHbIn_OnEnter(args: InvocationArguments) {
     mov     [rax+8], rbx
     pop     qword ptr [rax]
     */
-    log(`Backdoor_HbIn(${args[0].toString(16)})`);
+
+    let ptr = args[0];
+
+    log(`Backdoor_HbIn(${ptr.toString(16)})`);
+    let bp = new Backdoor_proto_hb(ptr);
+    log(`  ${bp}`);
 }
 
 function BackdoorHbOut_OnEnter(args: InvocationArguments) {
@@ -79,11 +115,16 @@ function BackdoorHbOut_OnEnter(args: InvocationArguments) {
     mov     [rax+8], rbx
     pop     qword ptr [rax]
     */
-    log(`Backdoor_HbOut(${args[0].toString(16)})`);
+
+    let ptr = args[0];
+
+    log(`Backdoor_HbOut(${ptr.toString(16)})`);
+    let bp = new Backdoor_proto_hb(ptr);
+    log(`  ${bp}`);
 }
 
 const HOOKS = {
-    "Backdoor": Backdoor_OnEnter,
+    // "Backdoor": Backdoor_OnEnter,
     "Backdoor_HbIn": BackdoorHbIn_OnEnter,
     "Backdoor_HbOut": BackdoorHbOut_OnEnter,
 }
