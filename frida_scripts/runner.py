@@ -7,7 +7,7 @@ import frida
 
 # replaced by build action defined in the Makefile
 # extraneous whitespace breaks the packed module parsing in frida
-SCRIPT_CODE = """
+SCRIPT_CODE = r"""
 XXXXX_SCRIPT_HERE_XXXXX
 """.strip()
 

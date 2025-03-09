@@ -1,15 +1,8 @@
 const log = console.log
 
-// vmtools!Backdoor
-//      Backdoor_proto*
-// vmtools!Backdoor_HbIn
-//      Backdoor_proto_hb*
-// vmtools!Backdoor_HbOut
-//      Backdoor_proto_hb*
-
 const MODULE_NAME = "vmtools.dll"
 
-function Backdoor_OnEnter(args: InvocationArguments) {
+function Backdoor_OnEnter(this: InvocationContext, args: InvocationArguments) {
     /*
     mov     rax, rcx
     push    rax
@@ -30,13 +23,6 @@ function Backdoor_OnEnter(args: InvocationArguments) {
     */
 
     log(`Backdoor(${args[0].toString(16)})`);
-
-    // let ptr = args[0].readPointer();
-    // if (ptr) {
-    //     log(hexdump(ptr, { length: 0x30, ansi: false }));
-    // } else {
-    //     log("(couldnt deref mem)");
-    // }
 }
 
 class Backdoor_proto_hb {
@@ -59,11 +45,25 @@ class Backdoor_proto_hb {
     }
 
     toString(): string {
-        return Object.entries(this).map(([k, v]) => `${k}=${v.toString(16)}`).join(" | ")
+        return Object.entries(this).map(([k, v]) => `${k}=0x${v.toString(16)}`).join(" | ")
+    }
+
+    data(): ArrayBuffer | null {
+        let ptr = new NativePointer(this.rsi);
+
+        // log(JSON.stringify(Process.getRangeByAddress(ptr)));
+        // return null;
+
+        return ptr.readByteArray(this.rcx.toNumber());
+    }
+
+    isCmdMsg(): boolean {
+        return this.rbx.and(0xff).equals(0);
     }
 }
 
-function BackdoorHbIn_OnEnter(args: InvocationArguments) {
+
+function BackdoorHbIn_OnLeave(this: InvocationContext, retval: InvocationReturnValue) {
     /*
     mov     rax, rcx
     push    rax
@@ -86,14 +86,24 @@ function BackdoorHbIn_OnEnter(args: InvocationArguments) {
     pop     qword ptr [rax]
     */
 
-    let ptr = args[0];
-
-    log(`Backdoor_HbIn(${ptr.toString(16)})`);
-    let bp = new Backdoor_proto_hb(ptr);
+    log(`Backdoor_HbIn() -> ${retval.toString(16)}`);
+    let bp = new Backdoor_proto_hb(retval);
     log(`  ${bp}`);
+
+    if (!bp.isCmdMsg()) {
+        log(`  not a msg`);
+        return;
+    }
+
+    let data = bp.data();
+    if (data) {
+        log(hexdump(data));
+    }
+
+    // log(JSON.stringify(this.context));
 }
 
-function BackdoorHbOut_OnEnter(args: InvocationArguments) {
+function BackdoorHbOut_OnEnter(this: InvocationContext, args: InvocationArguments) {
     /*
     mov     rax, rcx
     push    rax
@@ -121,16 +131,27 @@ function BackdoorHbOut_OnEnter(args: InvocationArguments) {
     log(`Backdoor_HbOut(${ptr.toString(16)})`);
     let bp = new Backdoor_proto_hb(ptr);
     log(`  ${bp}`);
+
+    let data = bp.data();
+    if (data) {
+        log(hexdump(data));
+    }
+
+    log("\r\n\r\n-------------------\r\n");
 }
 
+// in == host->guest
+// out == guest->host
+// so, intercept out before the call, and in after
 const HOOKS = {
-    // "Backdoor": Backdoor_OnEnter,
-    "Backdoor_HbIn": BackdoorHbIn_OnEnter,
-    "Backdoor_HbOut": BackdoorHbOut_OnEnter,
+    // "Backdoor": [Backdoor_OnEnter, undefined],
+    "Backdoor_HbIn": { enter: undefined, leave: BackdoorHbIn_OnLeave },
+    "Backdoor_HbOut": { enter: BackdoorHbOut_OnEnter, leave: undefined },
 }
 
-for (let [sym, hook] of Object.entries(HOOKS)) {
+for (let [sym, { enter, leave }] of Object.entries(HOOKS)) {
     Interceptor.attach(Module.getExportByName(MODULE_NAME, sym), {
-        onEnter: hook
+        onEnter: enter,
+        onLeave: leave,
     })
 }
