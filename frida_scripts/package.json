@@ -1,0 +1,9 @@
+{
+  "name": "frida_scripts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@types/frida-gum": "^18.7.2",
+    "frida": "^16.6.6",
+    "frida-compile": "^16.4.1"
+  }
+}
