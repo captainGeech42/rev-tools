@@ -13,8 +13,8 @@ import idalib.log as liblog
 DEBUG_MODE = False
 LOG = liblog.Log("log_sym_namer", DEBUG_MODE)
 
-# TARGET_DB = "/home/user/sec/vmware2025/ida/17.6.2/vmware-vmx.sqlite"
-TARGET_DB = "/home/user/sec/vmware2025/ida/vmware-vmx_diff.diaphora"
+TARGET_DB = "/home/user/sec/vmware2025/ida/17.6.2/vmware-vmx.sqlite"
+# TARGET_DB = "/home/user/sec/vmware2025/ida/vmware-vmx_diff.diaphora"
 
 class DiffTarget(enum.Enum):
     PRIMARY = "primary"

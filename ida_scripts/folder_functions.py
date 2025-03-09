@@ -17,8 +17,9 @@ LOG = liblog.Log("folder_functions", DEBUG_MODE)
 
 # [func name, filepath arg idx]
 FUNCS: list[tuple[str, int]] = [
-    ("z_schema_error", 0),
-    ("z_fatal_error", 1)
+    # ("z_schema_error", 0),
+    # ("z_fatal_error", 1),
+    ("z_get_basename", 0)
 ]
 
 func_dir: ida_dirtree.dirtree_t = ida_dirtree.get_std_dirtree(ida_dirtree.DIRTREE_FUNCS)

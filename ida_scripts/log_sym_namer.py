@@ -15,7 +15,7 @@ DEBUG_MODE = False
 
 LOG = liblog.Log("log_sym_namer", DEBUG_MODE)
 
-LOG_SYMBOL = "z_idk_logging_3"
+LOG_SYMBOL = "z_idk_logging_6"
 
 # process log calls where a plausible symbol name is prefixing the message instead of '%s'
 ENABLE_HARDCODE_CHECK = True
@@ -62,7 +62,7 @@ LOG.info(f"also skipping {len(failed_eas)} call sites that aren't in a function"
 
 num_set = 0
 
-_NAME_PAT = re.compile("^[a-z%][a-z0-9]*: ", re.I)
+_NAME_PAT = re.compile("^[a-z%][a-z0-9]*(| error): ", re.I)
 for func_ea in func_eas:
     calls = du.find_all_calls_to_within(LOG_SYMBOL, func_ea)
     # LOG.debug(str(calls))
